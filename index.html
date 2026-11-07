@@ -1,0 +1,1792 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>LIVECHAT PRO</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --card: #111827;
+      --elevated: #1f2937;
+      --border: #374151;
+      --text: #f9fafb;
+      --muted: #9ca3af;
+      --dim: #6b7280;
+      --primary: #3b82f6;
+      --accent: #8b5cf6;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --online: #22c55e;
+      --radius: 12px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      -webkit-tap-highlight-color: transparent;
+    }
+    button, a, input, textarea { font-family: inherit; }
+    button { cursor: pointer; border: none; background: none; color: inherit; }
+    input, textarea {
+      background: var(--elevated);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      color: var(--text);
+      font-size: 16px; /* prevent zoom on iOS */
+      width: 100%;
+      outline: none;
+    }
+    input:focus, textarea:focus { border-color: var(--primary); }
+    textarea { resize: none; }
+
+    /* ===== PAGES ===== */
+    .page { display: none; min-height: 100vh; }
+    .page.active { display: block; }
+
+    /* ===== LANDING ===== */
+    #pageLanding {
+      background: linear-gradient(160deg, #0b1220 0%, #111827 50%, #0f172a 100%);
+      display: none;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    #pageLanding.active { display: flex; }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 20px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 1.1rem;
+    }
+    .logo {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+    .btn-outline {
+      padding: 8px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .btn-outline:active { background: var(--elevated); }
+    .hero {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px 24px;
+    }
+    .hero h1 {
+      font-size: clamp(1.8rem, 5vw, 2.8rem);
+      font-weight: 800;
+      margin-bottom: 12px;
+      background: linear-gradient(135deg, #fff, #93c5fd);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero p { color: var(--muted); max-width: 400px; margin-bottom: 8px; }
+    .badge-live {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(59,130,246,0.15);
+      border: 1px solid rgba(59,130,246,0.3);
+      color: #93c5fd;
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.8rem;
+      margin-bottom: 20px;
+    }
+    .dot {
+      width: 8px; height: 8px;
+      background: var(--online);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* ===== CHAT LAUNCHER ===== */
+    #launcher {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      width: 60px; height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      box-shadow: 0 8px 28px rgba(59,130,246,0.45);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9000;
+      font-size: 26px;
+      border: none;
+      color: white;
+    }
+    #launcher:active { transform: scale(0.94); }
+    #badge {
+      position: absolute;
+      top: -4px; right: -4px;
+      background: var(--danger);
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      min-width: 20px; height: 20px;
+      border-radius: 10px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid var(--bg);
+    }
+    #badge.show { display: flex; }
+
+    /* ===== CHAT WINDOW ===== */
+    #chatWin {
+      position: fixed;
+      bottom: 90px;
+      right: 16px;
+      width: 370px;
+      max-width: calc(100vw - 24px);
+      height: 540px;
+      max-height: calc(100vh - 120px);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+      display: none;
+      flex-direction: column;
+      z-index: 9001;
+      overflow: hidden;
+    }
+    #chatWin.open { display: flex; }
+    .chat-head {
+      background: linear-gradient(135deg, #1e3a8a, #4c1d95);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .chat-head h3 { font-size: 0.95rem; flex: 1; }
+    .chat-head p { font-size: 0.75rem; opacity: 0.8; display: flex; align-items: center; gap: 6px; }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--dim);
+    }
+    .status-dot.on { background: var(--online); box-shadow: 0 0 6px var(--online); }
+    .icon-btn {
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.12);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      color: white;
+    }
+    .icon-btn:active { background: rgba(255,255,255,0.25); }
+
+    .chat-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      -webkit-overflow-scrolling: touch;
+    }
+    .msg {
+      max-width: 82%;
+      animation: fadeIn 0.2s ease;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: none; }
+    }
+    .msg.me { align-self: flex-end; }
+    .msg.them { align-self: flex-start; }
+    .msg.sys { align-self: center; max-width: 100%; }
+    .bubble {
+      padding: 10px 13px;
+      border-radius: 14px;
+      font-size: 0.9rem;
+      word-break: break-word;
+    }
+    .msg.me .bubble {
+      background: linear-gradient(135deg, var(--primary), #6366f1);
+      border-bottom-right-radius: 4px;
+    }
+    .msg.them .bubble {
+      background: var(--elevated);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+    }
+    .msg.sys .bubble {
+      background: transparent;
+      color: var(--dim);
+      font-size: 0.8rem;
+      text-align: center;
+    }
+    .meta {
+      font-size: 0.7rem;
+      color: var(--dim);
+      margin-top: 3px;
+      padding: 0 4px;
+    }
+    .msg.me .meta { text-align: right; }
+    .typing {
+      display: none;
+      gap: 4px;
+      padding: 10px 14px;
+      background: var(--elevated);
+      border-radius: 14px;
+      width: fit-content;
+      border: 1px solid var(--border);
+    }
+    .typing.show { display: flex; }
+    .typing span {
+      width: 6px; height: 6px;
+      background: var(--muted);
+      border-radius: 50%;
+      animation: bounce 1.2s infinite;
+    }
+    .typing span:nth-child(2) { animation-delay: 0.15s; }
+    .typing span:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes bounce {
+      0%,60%,100% { transform: none; opacity: 0.4; }
+      30% { transform: translateY(-4px); opacity: 1; }
+    }
+
+    .chat-foot {
+      padding: 10px 12px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .input-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+    .input-row textarea {
+      flex: 1;
+      min-height: 42px;
+      max-height: 100px;
+      padding: 10px 12px;
+      border-radius: 12px;
+    }
+    .btn-send {
+      width: 42px; height: 42px;
+      border-radius: 12px;
+      background: var(--primary);
+      color: white;
+      font-size: 18px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn-send:disabled { opacity: 0.45; }
+    .btn-send:active:not(:disabled) { background: #2563eb; }
+
+    /* Form start */
+    .form-start {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .form-start h3 { font-size: 1.1rem; }
+    .form-start p { color: var(--muted); font-size: 0.85rem; margin-bottom: 4px; }
+    .form-start label { font-size: 0.8rem; color: var(--muted); display: block; margin-bottom: 4px; }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: white;
+      padding: 13px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      width: 100%;
+    }
+    .btn-primary:active { opacity: 0.9; }
+    .btn-primary:disabled { opacity: 0.5; }
+
+    /* Rating */
+    .rating-box {
+      background: var(--elevated);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      text-align: center;
+      margin: 10px 0;
+    }
+    .stars { display: flex; justify-content: center; gap: 8px; margin: 12px 0; }
+    .star {
+      font-size: 28px;
+      color: var(--dim);
+      background: none;
+      border: none;
+    }
+    .star.on { color: #fbbf24; }
+
+    /* ===== LOGIN ===== */
+    #pageLogin {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 24px;
+      background: linear-gradient(160deg, #0b1220, #111827);
+    }
+    #pageLogin.active { display: flex; }
+    .login-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 32px 28px;
+      width: 100%;
+      max-width: 380px;
+    }
+    .login-card .brand { justify-content: center; margin-bottom: 20px; }
+    .login-card h2 { text-align: center; margin-bottom: 6px; }
+    .login-card .sub { text-align: center; color: var(--muted); font-size: 0.85rem; margin-bottom: 22px; }
+    .err {
+      background: rgba(239,68,68,0.15);
+      border: 1px solid rgba(239,68,68,0.3);
+      color: #fca5a5;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      margin-bottom: 12px;
+      display: none;
+    }
+    .err.show { display: block; }
+    .field { margin-bottom: 14px; }
+    .field label { font-size: 0.8rem; color: var(--muted); display: block; margin-bottom: 4px; }
+    .link-back {
+      display: block;
+      text-align: center;
+      margin-top: 16px;
+      color: var(--primary);
+      font-size: 0.85rem;
+      text-decoration: none;
+    }
+
+    /* ===== ADMIN ===== */
+    #pageAdmin {
+      display: none;
+      height: 100vh;
+      overflow: hidden;
+    }
+    #pageAdmin.active { display: flex; }
+    .sidebar {
+      width: 230px;
+      background: var(--card);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .sidebar-brand {
+      padding: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+      font-weight: 700;
+    }
+    .nav { flex: 1; padding: 10px; overflow-y: auto; }
+    .nav-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 11px 12px;
+      border-radius: 10px;
+      color: var(--muted);
+      font-size: 0.875rem;
+      font-weight: 500;
+      text-align: left;
+      margin-bottom: 2px;
+    }
+    .nav-btn:active, .nav-btn.active {
+      background: rgba(59,130,246,0.15);
+      color: #93c5fd;
+    }
+    .nav-btn .nb {
+      margin-left: auto;
+      background: var(--danger);
+      color: white;
+      font-size: 0.7rem;
+      padding: 2px 7px;
+      border-radius: 10px;
+      display: none;
+    }
+    .nav-btn .nb.show { display: block; }
+    .side-foot {
+      padding: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .user-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .avatar {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+    .user-row strong { display: block; font-size: 0.85rem; }
+    .user-row span { font-size: 0.75rem; color: var(--dim); }
+    .btn-logout {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    .btn-logout:active { border-color: var(--danger); color: var(--danger); }
+
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--bg);
+    }
+    .top {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--card);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .top h2 { font-size: 1.1rem; flex: 1; }
+    .menu-btn {
+      display: none;
+      width: 36px; height: 36px;
+      background: var(--elevated);
+      border-radius: 8px;
+      font-size: 20px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .content { flex: 1; overflow: hidden; display: flex; }
+
+    /* Stats */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 14px;
+      padding: 20px;
+      overflow-y: auto;
+      width: 100%;
+      align-content: start;
+    }
+    .stat {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px;
+    }
+    .stat .l { font-size: 0.8rem; color: var(--muted); margin-bottom: 6px; }
+    .stat .v { font-size: 1.6rem; font-weight: 700; }
+
+    /* Inbox */
+    .inbox {
+      width: 320px;
+      border-right: 1px solid var(--border);
+      background: var(--card);
+      display: none;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    .inbox.show { display: flex; }
+    .inbox-tools {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .filters {
+      display: flex;
+      gap: 4px;
+      margin-top: 8px;
+      overflow-x: auto;
+    }
+    .ftab {
+      padding: 5px 11px;
+      border-radius: 6px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .ftab.active { background: rgba(59,130,246,0.2); color: #93c5fd; }
+    .clist { flex: 1; overflow-y: auto; }
+    .citem {
+      display: flex;
+      gap: 12px;
+      padding: 13px 14px;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .citem:active, .citem.active { background: rgba(59,130,246,0.12); }
+    .citem.unread .cname { font-weight: 700; }
+    .cav {
+      width: 40px; height: 40px;
+      border-radius: 11px;
+      background: #374151;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .cinfo { flex: 1; min-width: 0; }
+    .crow { display: flex; justify-content: space-between; }
+    .cname { font-size: 0.875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .ctime { font-size: 0.7rem; color: var(--dim); }
+    .cprev { font-size: 0.8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .cmeta { display: flex; gap: 6px; margin-top: 4px; align-items: center; }
+    .stag {
+      font-size: 0.65rem;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .stag.open { background: rgba(34,197,94,0.15); color: #4ade80; }
+    .stag.pending { background: rgba(245,158,11,0.15); color: #fbbf24; }
+    .stag.closed { background: rgba(107,114,128,0.2); color: #9ca3af; }
+    .ucount {
+      background: var(--primary);
+      color: white;
+      font-size: 0.7rem;
+      font-weight: 700;
+      min-width: 18px; height: 18px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: auto;
+    }
+
+    /* Chat panel admin */
+    .cpanel {
+      flex: 1;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .cpanel.show { display: flex; }
+    .cpanel-empty {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--dim);
+      gap: 8px;
+    }
+    .cpanel-head {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--card);
+      display: none;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .cpanel-head.show { display: flex; }
+    .cpanel-head .info { flex: 1; min-width: 0; }
+    .cpanel-head h3 { font-size: 0.95rem; }
+    .cpanel-head p { font-size: 0.75rem; color: var(--muted); }
+    .btn-sm {
+      padding: 6px 11px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .btn-sm:active { background: var(--elevated); }
+    .amsg {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .amsg.show { display: flex; }
+    .ainput {
+      padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--card);
+      display: none;
+      flex-shrink: 0;
+    }
+    .ainput.show { display: block; }
+    .qr-bar {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+      overflow-x: auto;
+    }
+    .qr-chip {
+      padding: 5px 11px;
+      background: var(--elevated);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 0.75rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .qr-chip:active { border-color: var(--primary); color: #93c5fd; }
+
+    /* Settings / QR pages */
+    .fullpage {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+      display: none;
+    }
+    .fullpage.show { display: block; }
+    .fullpage h3 { margin-bottom: 16px; }
+    .sform { max-width: 480px; display: flex; flex-direction: column; gap: 14px; }
+    .sform label { font-size: 0.8rem; color: var(--muted); display: block; margin-bottom: 4px; }
+    .toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .tog {
+      width: 44px; height: 24px;
+      background: var(--border);
+      border-radius: 12px;
+      position: relative;
+    }
+    .tog.on { background: var(--primary); }
+    .tog::after {
+      content: '';
+      position: absolute;
+      width: 18px; height: 18px;
+      background: white;
+      border-radius: 50%;
+      top: 3px; left: 3px;
+      transition: 0.2s;
+    }
+    .tog.on::after { transform: translateX(20px); }
+    .qr-item {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 10px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .qr-item .t { font-weight: 600; font-size: 0.875rem; }
+    .qr-item .c { font-size: 0.8rem; color: var(--muted); }
+    .qr-item .del { color: var(--danger); font-size: 0.8rem; margin-left: auto; }
+
+    /* Overlay mobile sidebar */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 100;
+    }
+    .overlay.show { display: block; }
+
+    /* Toast */
+    #toasts {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 99999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .toast {
+      background: var(--elevated);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      font-size: 0.85rem;
+      max-width: 300px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      animation: slideIn 0.25s ease;
+    }
+    .toast.ok { border-left: 3px solid var(--success); }
+    .toast.err { border-left: 3px solid var(--danger); }
+    .toast.info { border-left: 3px solid var(--primary); }
+    @keyframes slideIn {
+      from { opacity: 0; transform: translateX(30px); }
+      to { opacity: 1; transform: none; }
+    }
+
+    /* Config banner */
+    #cfgBanner {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: #9a3412;
+      color: #fed7aa;
+      padding: 10px 16px;
+      text-align: center;
+      font-size: 0.85rem;
+      z-index: 99998;
+    }
+    #cfgBanner.show { display: block; }
+
+    .empty { text-align: center; padding: 40px 20px; color: var(--dim); }
+    .hidden { display: none !important; }
+
+    /* Mobile */
+    @media (max-width: 768px) {
+      #chatWin {
+        bottom: 0; right: 0;
+        width: 100%; max-width: 100%;
+        height: 100%; max-height: 100%;
+        border-radius: 0;
+      }
+      #launcher { bottom: 16px; right: 16px; }
+      .sidebar {
+        position: fixed;
+        left: -250px; top: 0; bottom: 0;
+        z-index: 101;
+        transition: left 0.25s;
+        width: 250px;
+      }
+      .sidebar.open { left: 0; }
+      .menu-btn { display: flex; }
+      .inbox { width: 100%; }
+      .cpanel { display: none !important; }
+      .cpanel.mobile-open {
+        display: flex !important;
+        position: fixed;
+        inset: 0;
+        z-index: 50;
+        background: var(--bg);
+      }
+      .back-btn { display: flex !important; }
+    }
+    .back-btn {
+      display: none;
+      width: 36px; height: 36px;
+      background: var(--elevated);
+      border-radius: 8px;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+
+<div id="cfgBanner">⚠️ Isi SUPABASE_URL dan SUPABASE_ANON_KEY di dalam file index.html</div>
+<div id="toasts"></div>
+
+<!-- ========== LANDING ========== -->
+<div id="pageLanding" class="page active">
+  <div class="topbar">
+    <div class="brand"><div class="logo">💬</div> LIVECHAT PRO</div>
+    <button class="btn-outline" id="btnGoAdmin">Admin Login</button>
+  </div>
+  <div class="hero">
+    <div class="badge-live"><span class="dot"></span> Customer Support Real-time</div>
+    <h1>Bantuan Profesional,<br>Jawaban Instan</h1>
+    <p>Klik tombol chat di pojok kanan bawah untuk menghubungi admin.</p>
+  </div>
+</div>
+
+<!-- Launcher -->
+<button id="launcher" type="button" aria-label="Buka chat">💬<span id="badge">0</span></button>
+
+<!-- Chat Window -->
+<div id="chatWin">
+  <div class="chat-head">
+    <div class="logo" style="width:34px;height:34px;font-size:16px">💬</div>
+    <div style="flex:1">
+      <h3 id="brandTitle">LIVECHAT PRO</h3>
+      <p><span class="status-dot" id="adminDot"></span> <span id="adminTxt">Memeriksa...</span></p>
+    </div>
+    <button class="icon-btn" id="btnEndChat" type="button" title="Akhiri" style="display:none">✕</button>
+    <button class="icon-btn" id="btnCloseChat" type="button" title="Tutup">─</button>
+  </div>
+
+  <!-- Start form -->
+  <div class="form-start" id="startForm">
+    <h3>Mulai Percakapan</h3>
+    <p id="welcomeMsg">Halo! Ada yang bisa kami bantu?</p>
+    <div>
+      <label>Nama *</label>
+      <input id="vName" type="text" placeholder="Nama Anda" maxlength="50" />
+    </div>
+    <div>
+      <label>Email (opsional)</label>
+      <input id="vEmail" type="email" placeholder="email@contoh.com" maxlength="100" />
+    </div>
+    <div>
+      <label>Subjek</label>
+      <input id="vSubject" type="text" placeholder="Apa yang ingin ditanyakan?" maxlength="100" />
+    </div>
+    <button class="btn-primary" id="btnStart" type="button">Mulai Chat</button>
+  </div>
+
+  <!-- Messages -->
+  <div class="chat-body hidden" id="msgBody"></div>
+  <div style="padding:0 14px 6px" class="hidden" id="typingWrap">
+    <div class="typing" id="typingEl"><span></span><span></span><span></span></div>
+  </div>
+
+  <!-- Input -->
+  <div class="chat-foot hidden" id="chatFoot">
+    <div class="input-row">
+      <textarea id="msgInput" rows="1" placeholder="Ketik pesan..." maxlength="2000"></textarea>
+      <button class="btn-send" id="btnSend" type="button" disabled>➤</button>
+    </div>
+  </div>
+
+  <!-- Rating -->
+  <div class="chat-body hidden" id="ratingArea">
+    <div class="rating-box">
+      <h4>Bagaimana pelayanan kami?</h4>
+      <div class="stars" id="stars">
+        <button class="star" data-v="1" type="button">★</button>
+        <button class="star" data-v="2" type="button">★</button>
+        <button class="star" data-v="3" type="button">★</button>
+        <button class="star" data-v="4" type="button">★</button>
+        <button class="star" data-v="5" type="button">★</button>
+      </div>
+      <textarea id="ratingNote" placeholder="Komentar (opsional)" maxlength="500" rows="2" style="margin-bottom:12px"></textarea>
+      <button class="btn-primary" id="btnRate" type="button">Kirim Rating</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== LOGIN ========== -->
+<div id="pageLogin" class="page">
+  <div class="login-card">
+    <div class="brand"><div class="logo">💬</div> LIVECHAT PRO</div>
+    <h2>Admin Dashboard</h2>
+    <p class="sub">Masuk dengan akun admin</p>
+    <div class="err" id="loginErr"></div>
+    <div class="field">
+      <label>Email</label>
+      <input id="loginEmail" type="email" placeholder="admin@email.com" />
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input id="loginPass" type="password" placeholder="••••••••" />
+    </div>
+    <button class="btn-primary" id="btnLogin" type="button">Masuk</button>
+    <a href="#" class="link-back" id="btnBackSite">← Kembali ke situs</a>
+  </div>
+</div>
+
+<!-- ========== ADMIN ========== -->
+<div id="pageAdmin" class="page">
+  <div class="overlay" id="sideOverlay"></div>
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-brand"><div class="logo">💬</div> LIVECHAT PRO</div>
+    <nav class="nav">
+      <button class="nav-btn active" data-p="overview" type="button">📊 Overview</button>
+      <button class="nav-btn" data-p="inbox" type="button">💬 Percakapan <span class="nb" id="navBadge">0</span></button>
+      <button class="nav-btn" data-p="active" type="button">🟢 Aktif</button>
+      <button class="nav-btn" data-p="closed" type="button">📁 Selesai</button>
+      <button class="nav-btn" data-p="qr" type="button">⚡ Quick Replies</button>
+      <button class="nav-btn" data-p="settings" type="button">⚙️ Settings</button>
+    </nav>
+    <div class="side-foot">
+      <div class="user-row">
+        <div class="avatar" id="admAv">A</div>
+        <div>
+          <strong id="admName">Admin</strong>
+          <span id="admEmail">—</span>
+        </div>
+      </div>
+      <button class="btn-logout" id="btnLogout" type="button">Logout</button>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="top">
+      <button class="menu-btn" id="btnMenu" type="button">☰</button>
+      <h2 id="pageTitle">Overview</h2>
+    </div>
+    <div class="content">
+      <!-- Overview -->
+      <div class="stats" id="viewOverview">
+        <div class="stat"><div class="l">Total Percakapan</div><div class="v" id="sTotal">0</div></div>
+        <div class="stat"><div class="l">Aktif</div><div class="v" id="sActive">0</div></div>
+        <div class="stat"><div class="l">Belum Dibalas</div><div class="v" id="sUnread">0</div></div>
+        <div class="stat"><div class="l">Selesai</div><div class="v" id="sClosed">0</div></div>
+        <div class="stat"><div class="l">Rata-rata Rating</div><div class="v" id="sRating">—</div></div>
+        <div class="stat"><div class="l">Total Rating</div><div class="v" id="sRateCount">0</div></div>
+      </div>
+
+      <!-- Inbox -->
+      <div class="inbox" id="viewInbox">
+        <div class="inbox-tools">
+          <input id="searchBox" type="text" placeholder="Cari..." />
+          <div class="filters">
+            <button class="ftab active" data-f="all" type="button">All</button>
+            <button class="ftab" data-f="open" type="button">Open</button>
+            <button class="ftab" data-f="pending" type="button">Pending</button>
+            <button class="ftab" data-f="closed" type="button">Closed</button>
+            <button class="ftab" data-f="unread" type="button">Unread</button>
+          </div>
+        </div>
+        <div class="clist" id="convList"><div class="empty">Memuat...</div></div>
+      </div>
+
+      <!-- Chat panel -->
+      <div class="cpanel" id="viewChat">
+        <div class="cpanel-empty" id="chatEmpty">
+          <div style="font-size:48px;opacity:0.3">💬</div>
+          <p>Pilih percakapan</p>
+        </div>
+        <div class="cpanel-head" id="chatHead">
+          <button class="back-btn" id="btnBackConv" type="button">←</button>
+          <div class="cav" id="pAv" style="width:36px;height:36px;font-size:0.85rem">V</div>
+          <div class="info">
+            <h3 id="pName">Visitor</h3>
+            <p id="pMeta">—</p>
+          </div>
+          <button class="btn-sm" id="btnPending" type="button">Pending</button>
+          <button class="btn-sm" id="btnCloseConv" type="button">Tutup</button>
+          <button class="btn-sm hidden" id="btnReopen" type="button">Buka Lagi</button>
+        </div>
+        <div class="amsg" id="adminMsgs"></div>
+        <div class="ainput" id="adminInput">
+          <div class="qr-bar" id="qrBar"></div>
+          <div class="input-row">
+            <textarea id="aInput" rows="1" placeholder="Balas pesan..." maxlength="2000"></textarea>
+            <button class="btn-send" id="btnASend" type="button" disabled>➤</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Replies -->
+      <div class="fullpage" id="viewQR">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;max-width:560px">
+          <h3 style="margin:0">Quick Replies</h3>
+          <button class="btn-primary" id="btnAddQR" type="button" style="width:auto;padding:8px 16px;font-size:0.85rem">+ Tambah</button>
+        </div>
+        <div id="qrList" style="max-width:560px"></div>
+      </div>
+
+      <!-- Settings -->
+      <div class="fullpage" id="viewSettings">
+        <h3>Pengaturan</h3>
+        <div class="sform">
+          <div>
+            <label>Nama Brand</label>
+            <input id="setBrand" type="text" />
+          </div>
+          <div>
+            <label>Pesan Sambutan</label>
+            <textarea id="setWelcome" rows="2"></textarea>
+          </div>
+          <div>
+            <label>Pesan Offline</label>
+            <textarea id="setOffline" rows="2"></textarea>
+          </div>
+          <div>
+            <label>Jam Pelayanan</label>
+            <input id="setHours" type="text" />
+          </div>
+          <div class="toggle-row">
+            <span>Aktifkan Live Chat</span>
+            <button class="tog on" id="setEnable" type="button"></button>
+          </div>
+          <div class="toggle-row">
+            <span>Wajibkan Email</span>
+            <button class="tog" id="setReqEmail" type="button"></button>
+          </div>
+          <button class="btn-primary" id="btnSaveSet" type="button">Simpan Pengaturan</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   LIVECHAT PRO — Konfigurasi
+   Isi 2 baris di bawah dengan data dari Supabase
+   (Settings → API → Project URL & anon public key)
+   ============================================================ */
+const SUPABASE_URL = 'https://xenochat.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...';
+
+/* ============================================================ */
+
+let sb = null;
+let user = null;
+let isAdmin = false;
+let sessionId = localStorage.getItem('lcp_sid') || null;
+let vName = localStorage.getItem('lcp_name') || '';
+let convId = localStorage.getItem('lcp_conv') || null;
+let convs = [];
+let selectedId = null;
+let qrs = [];
+let filter = 'all';
+let search = '';
+let rating = 0;
+let unread = 0;
+let channels = [];
+let settings = {
+  brand_name: 'LIVECHAT PRO',
+  welcome_message: 'Halo! Ada yang bisa kami bantu hari ini?',
+  offline_message: 'Kami sedang offline. Silakan tinggalkan pesan.',
+  enable_livechat: true,
+  require_email: false
+};
+
+// ---------- Helpers ----------
+function $(id) { return document.getElementById(id); }
+function toast(msg, type) {
+  const t = document.createElement('div');
+  t.className = 'toast ' + (type || 'info');
+  t.textContent = msg;
+  $('toasts').appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso), n = new Date(), diff = (n - d) / 1000;
+  if (diff < 60) return 'Baru saja';
+  if (diff < 3600) return Math.floor(diff/60) + ' mnt';
+  if (d.toDateString() === n.toDateString()) return d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+  return d.toLocaleDateString('id-ID',{day:'numeric',month:'short'});
+}
+function scrollBottom(el) {
+  requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+}
+function showPage(name) {
+  ['pageLanding','pageLogin','pageAdmin'].forEach(p => $(p).classList.remove('active'));
+  $(name).classList.add('active');
+  if (name !== 'pageLanding') {
+    $('launcher').style.display = 'none';
+    $('chatWin').classList.remove('open');
+  } else {
+    $('launcher').style.display = settings.enable_livechat ? 'flex' : 'none';
+  }
+}
+
+// ---------- Init ----------
+document.addEventListener('DOMContentLoaded', async () => {
+  bindEvents();
+
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY || SUPABASE_URL.includes('xxxxx')) {
+    $('cfgBanner').classList.add('show');
+    return;
+  }
+
+  try {
+    sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    await loadSettings();
+    if (!sessionId) {
+      sessionId = 'v_' + Math.random().toString(36).slice(2) + Date.now().toString(36);
+      localStorage.setItem('lcp_sid', sessionId);
+    }
+    if (vName) $('vName').value = vName;
+    checkAdminOnline();
+    setInterval(checkAdminOnline, 30000);
+
+    const { data: { session } } = await sb.auth.getSession();
+    if (session) {
+      user = session.user;
+      const { data: prof } = await sb.from('profiles').select('*').eq('id', user.id).single();
+      if (prof && (prof.role === 'admin' || prof.role === 'agent')) {
+        isAdmin = true;
+        enterAdmin(prof);
+        return;
+      }
+    }
+    if (location.hash === '#admin') showPage('pageLogin');
+  } catch (e) {
+    console.error(e);
+    $('cfgBanner').classList.add('show');
+    $('cfgBanner').textContent = 'Gagal koneksi Supabase. Periksa URL & Key.';
+  }
+});
+
+async function loadSettings() {
+  try {
+    const { data } = await sb.from('chat_settings').select('*').eq('id', 1).single();
+    if (data) {
+      settings = { ...settings, ...data };
+      $('brandTitle').textContent = settings.brand_name || 'LIVECHAT PRO';
+      $('welcomeMsg').textContent = settings.welcome_message || '';
+      if (!settings.enable_livechat) $('launcher').style.display = 'none';
+    }
+  } catch (e) {}
+}
+
+async function checkAdminOnline() {
+  if (!sb) return;
+  try {
+    const { data } = await sb.from('profiles').select('id').in('role',['admin','agent']).eq('is_online', true).limit(1);
+    const on = data && data.length > 0;
+    $('adminDot').classList.toggle('on', on);
+    $('adminTxt').textContent = on ? 'Admin Online' : 'Admin Offline';
+  } catch (e) {
+    $('adminTxt').textContent = 'Status tidak tersedia';
+  }
+}
+
+// ---------- Visitor Chat ----------
+function openChat() {
+  $('chatWin').classList.add('open');
+  unread = 0;
+  updateBadge();
+  if (convId) {
+    showChatRoom();
+    loadVisitorMsgs();
+    subVisitor();
+  }
+  if ('Notification' in window && Notification.permission === 'default') {
+    Notification.requestPermission();
+  }
+}
+function closeChat() {
+  $('chatWin').classList.remove('open');
+}
+
+async function startChat() {
+  const name = $('vName').value.trim();
+  const email = $('vEmail').value.trim();
+  const subject = $('vSubject').value.trim() || 'General Inquiry';
+  if (!name) { toast('Nama wajib diisi', 'err'); return; }
+  if (settings.require_email && !email) { toast('Email wajib diisi', 'err'); return; }
+
+  $('btnStart').disabled = true;
+  $('btnStart').textContent = 'Memulai...';
+  try {
+    const { data: exist } = await sb.from('conversations')
+      .select('id').eq('visitor_session_id', sessionId).in('status',['open','pending'])
+      .order('created_at',{ascending:false}).limit(1);
+
+    if (exist && exist.length) {
+      convId = exist[0].id;
+    } else {
+      const { data: c, error } = await sb.from('conversations').insert({
+        visitor_name: name,
+        visitor_email: email || null,
+        visitor_session_id: sessionId,
+        subject,
+        status: 'open',
+        last_message_preview: settings.welcome_message
+      }).select().single();
+      if (error) throw error;
+      convId = c.id;
+      await sb.from('messages').insert({
+        conversation_id: convId,
+        sender_role: 'system',
+        sender_name: 'System',
+        content: settings.welcome_message,
+        message_type: 'system'
+      });
+    }
+    vName = name;
+    localStorage.setItem('lcp_name', name);
+    localStorage.setItem('lcp_conv', convId);
+    showChatRoom();
+    await loadVisitorMsgs();
+    subVisitor();
+  } catch (e) {
+    toast('Gagal: ' + (e.message || 'Error'), 'err');
+  }
+  $('btnStart').disabled = false;
+  $('btnStart').textContent = 'Mulai Chat';
+}
+
+function showChatRoom() {
+  $('startForm').classList.add('hidden');
+  $('msgBody').classList.remove('hidden');
+  $('chatFoot').classList.remove('hidden');
+  $('typingWrap').classList.remove('hidden');
+  $('btnEndChat').style.display = '';
+  $('ratingArea').classList.add('hidden');
+}
+
+async function loadVisitorMsgs() {
+  if (!convId) return;
+  const { data } = await sb.from('messages').select('*')
+    .eq('conversation_id', convId).order('created_at',{ascending:true});
+  const body = $('msgBody');
+  body.innerHTML = '';
+  (data || []).forEach(m => body.appendChild(makeMsg(m)));
+  scrollBottom(body);
+  await sb.from('messages').update({is_read:true, read_at: new Date().toISOString()})
+    .eq('conversation_id', convId).in('sender_role',['admin','agent']).eq('is_read', false);
+  await sb.from('conversations').update({unread_count_visitor:0}).eq('id', convId);
+}
+
+function makeMsg(m) {
+  const d = document.createElement('div');
+  const role = m.sender_role === 'visitor' ? 'me' : (m.sender_role === 'system' ? 'sys' : 'them');
+  d.className = 'msg ' + role;
+  d.innerHTML = `<div class="bubble">${esc(m.content || '')}</div>
+    <div class="meta">${m.sender_role !== 'system' ? esc(m.sender_name || role) + ' · ' : ''}${fmtTime(m.created_at)}</div>`;
+  return d;
+}
+
+async function sendMsg() {
+  const text = $('msgInput').value.trim();
+  if (!text || !convId) return;
+  $('msgInput').value = '';
+  $('btnSend').disabled = true;
+  try {
+    await sb.from('messages').insert({
+      conversation_id: convId,
+      sender_role: 'visitor',
+      sender_name: vName,
+      content: text,
+      message_type: 'text'
+    });
+    await sb.from('conversations').update({status:'open'}).eq('id', convId).eq('status','closed');
+  } catch (e) {
+    toast('Gagal kirim: ' + e.message, 'err');
+    $('msgInput').value = text;
+  }
+}
+
+function subVisitor() {
+  cleanupCh();
+  if (!convId) return;
+  const ch = sb.channel('v_' + convId)
+    .on('postgres_changes', {
+      event: 'INSERT', schema: 'public', table: 'messages',
+      filter: `conversation_id=eq.${convId}`
+    }, (payload) => {
+      const m = payload.new;
+      const body = $('msgBody');
+      body.appendChild(makeMsg(m));
+      scrollBottom(body);
+      if (m.sender_role === 'admin' || m.sender_role === 'agent') {
+        if (!$('chatWin').classList.contains('open')) {
+          unread++;
+          updateBadge();
+        }
+        playSound();
+      }
+    })
+    .on('broadcast', { event: 'typing' }, (p) => {
+      if (p.payload && (p.payload.role === 'admin' || p.payload.role === 'agent')) {
+        $('typingEl').classList.toggle('show', !!p.payload.is_typing);
+      }
+    })
+    .subscribe();
+  channels.push(ch);
+}
+
+function updateBadge() {
+  const b = $('badge');
+  if (unread > 0) {
+    b.textContent = unread > 9 ? '9+' : unread;
+    b.classList.add('show');
+  } else b.classList.remove('show');
+}
+
+async function endChat() {
+  if (!convId || !confirm('Akhiri percakapan?')) return;
+  await sb.from('conversations').update({
+    status: 'closed', closed_at: new Date().toISOString()
+  }).eq('id', convId);
+  $('chatFoot').classList.add('hidden');
+  $('typingWrap').classList.add('hidden');
+  $('ratingArea').classList.remove('hidden');
+  $('btnEndChat').style.display = 'none';
+}
+
+async function submitRating() {
+  if (!rating || !convId) { toast('Pilih bintang', 'err'); return; }
+  try {
+    await sb.from('ratings').insert({
+      conversation_id: convId,
+      visitor_session_id: sessionId,
+      rating,
+      comment: $('ratingNote').value.trim() || null
+    });
+    toast('Terima kasih!', 'ok');
+    $('ratingArea').innerHTML = '<div class="empty">Terima kasih! Percakapan selesai.</div>';
+    localStorage.removeItem('lcp_conv');
+    convId = null;
+  } catch (e) {
+    toast(e.code === '23505' ? 'Sudah memberi rating' : 'Gagal', 'err');
+  }
+}
+
+// ---------- Admin Auth ----------
+async function doLogin() {
+  const email = $('loginEmail').value.trim();
+  const pass = $('loginPass').value;
+  $('loginErr').classList.remove('show');
+  if (!email || !pass) {
+    $('loginErr').textContent = 'Email & password wajib';
+    $('loginErr').classList.add('show');
+    return;
+  }
+  $('btnLogin').disabled = true;
+  $('btnLogin').textContent = 'Memproses...';
+  try {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: pass });
+    if (error) throw error;
+    user = data.user;
+    const { data: prof, error: pe } = await sb.from('profiles').select('*').eq('id', user.id).single();
+    if (pe || !prof || (prof.role !== 'admin' && prof.role !== 'agent')) {
+      await sb.auth.signOut();
+      throw new Error('Akun ini bukan admin. Hubungi pemilik proyek.');
+    }
+    isAdmin = true;
+    enterAdmin(prof);
+  } catch (e) {
+    $('loginErr').textContent = e.message || 'Login gagal';
+    $('loginErr').classList.add('show');
+  }
+  $('btnLogin').disabled = false;
+  $('btnLogin').textContent = 'Masuk';
+}
+
+function enterAdmin(prof) {
+  showPage('pageAdmin');
+  $('admName').textContent = prof.full_name || 'Admin';
+  $('admEmail').textContent = prof.email || user.email;
+  $('admAv').textContent = (prof.full_name || 'A').charAt(0).toUpperCase();
+  sb.from('profiles').update({ is_online: true, last_seen_at: new Date().toISOString() }).eq('id', user.id);
+  loadAdmin();
+  subAdmin();
+}
+
+async function doLogout() {
+  if (user) await sb.from('profiles').update({ is_online: false }).eq('id', user.id);
+  await sb.auth.signOut();
+  user = null;
+  isAdmin = false;
+  cleanupCh();
+  showPage('pageLanding');
+}
+
+// ---------- Admin Data ----------
+async function loadAdmin() {
+  await Promise.all([loadConvs(), loadQRs(), loadStats()]);
+  showAdminView('overview');
+}
+
+async function loadStats() {
+  try {
+    const { data: cs } = await sb.from('conversations').select('id,status,unread_count_admin');
+    const total = cs?.length || 0;
+    const active = cs?.filter(c => c.status === 'open' || c.status === 'pending').length || 0;
+    const closed = cs?.filter(c => c.status === 'closed').length || 0;
+    const unrd = cs?.filter(c => c.unread_count_admin > 0 && c.status !== 'closed').length || 0;
+    $('sTotal').textContent = total;
+    $('sActive').textContent = active;
+    $('sClosed').textContent = closed;
+    $('sUnread').textContent = unrd;
+    const { data: rs } = await sb.from('ratings').select('rating');
+    if (rs && rs.length) {
+      $('sRating').textContent = (rs.reduce((s,r) => s + r.rating, 0) / rs.length).toFixed(1);
+      $('sRateCount').textContent = rs.length;
+    }
+  } catch (e) {}
+}
+
+async function loadConvs() {
+  try {
+    const { data } = await sb.from('conversations').select('*')
+      .order('last_message_at', { ascending: false }).limit(100);
+    convs = data || [];
+    renderConvs();
+    const tu = convs.reduce((s,c) => s + (c.unread_count_admin || 0), 0);
+    const nb = $('navBadge');
+    if (tu > 0) { nb.textContent = tu > 99 ? '99+' : tu; nb.classList.add('show'); }
+    else nb.classList.remove('show');
+  } catch (e) {
+    $('convList').innerHTML = '<div class="empty">Gagal memuat</div>';
+  }
+}
+
+function renderConvs() {
+  let list = convs;
+  if (filter === 'open') list = list.filter(c => c.status === 'open');
+  else if (filter === 'pending') list = list.filter(c => c.status === 'pending');
+  else if (filter === 'closed') list = list.filter(c => c.status === 'closed');
+  else if (filter === 'unread') list = list.filter(c => c.unread_count_admin > 0);
+  if (search) {
+    const q = search.toLowerCase();
+    list = list.filter(c =>
+      (c.visitor_name||'').toLowerCase().includes(q) ||
+      (c.subject||'').toLowerCase().includes(q) ||
+      (c.last_message_preview||'').toLowerCase().includes(q)
+    );
+  }
+  const el = $('convList');
+  if (!list.length) {
+    el.innerHTML = '<div class="empty">Tidak ada percakapan</div>';
+    return;
+  }
+  el.innerHTML = list.map(c => {
+    const u = c.unread_count_admin || 0;
+    return `<div class="citem ${c.id===selectedId?'active':''} ${u?'unread':''}" data-id="${c.id}">
+      <div class="cav">${esc((c.visitor_name||'V').charAt(0).toUpperCase())}</div>
+      <div class="cinfo">
+        <div class="crow"><span class="cname">${esc(c.visitor_name||'Visitor')}</span><span class="ctime">${fmtTime(c.last_message_at)}</span></div>
+        <div class="cprev">${esc(c.last_message_preview||c.subject||'')}</div>
+        <div class="cmeta"><span class="stag ${c.status}">${c.status}</span>${u?`<span class="ucount">${u}</span>`:''}</div>
+      </div>
+    </div>`;
+  }).join('');
+  el.querySelectorAll('.citem').forEach(item => {
+    item.addEventListener('click', () => selectConv(item.dataset.id));
+  });
+}
+
+async function selectConv(id) {
+  selectedId = id;
+  renderConvs();
+  const c = convs.find(x => x.id === id);
+  if (!c) return;
+
+  $('chatEmpty').classList.add('hidden');
+  $('chatHead').classList.add('show');
+  $('adminMsgs').classList.add('show');
+  $('adminInput').classList.add('show');
+  $('viewChat').classList.add('show');
+
+  $('pAv').textContent = (c.visitor_name||'V').charAt(0).toUpperCase();
+  $('pName').textContent = c.visitor_name || 'Visitor';
+  $('pMeta').textContent = (c.subject||'') + ' · ' + c.status;
+  $('btnCloseConv').classList.toggle('hidden', c.status === 'closed');
+  $('btnReopen').classList.toggle('hidden', c.status !== 'closed');
+  $('btnPending').classList.toggle('hidden', c.status === 'closed');
+
+  if (window.innerWidth <= 768) $('viewChat').classList.add('mobile-open');
+
+  const { data } = await sb.from('messages').select('*')
+    .eq('conversation_id', id).order('created_at',{ascending:true});
+  const box = $('adminMsgs');
+  box.innerHTML = '';
+  (data||[]).forEach(m => box.appendChild(makeMsg(m)));
+  scrollBottom(box);
+
+  await sb.from('messages').update({is_read:true, read_at: new Date().toISOString()})
+    .eq('conversation_id', id).eq('sender_role','visitor').eq('is_read', false);
+  await sb.from('conversations').update({unread_count_admin:0}).eq('id', id);
+  const ix = convs.findIndex(x => x.id === id);
+  if (ix >= 0) convs[ix].unread_count_admin = 0;
+  renderConvs();
+}
+
+async function sendAdminMsg() {
+  const text = $('aInput').value.trim();
+  if (!text || !selectedId) return;
+  $('aInput').value = '';
+  $('btnASend').disabled = true;
+  try {
+    await sb.from('messages').insert({
+      conversation_id: selectedId,
+      sender_id: user.id,
+      sender_role: 'admin',
+      sender_name: $('admName').textContent,
+      content: text,
+      message_type: 'text'
+    });
+  } catch (e) {
+    toast('Gagal: ' + e.message, 'err');
+  }
+}
+
+async function setStatus(st) {
+  if (!selectedId) return;
+  await sb.from('conversations').update({
+    status: st,
+    closed_at: st === 'closed' ? new Date().toISOString() : null
+  }).eq('id', selectedId);
+  toast('Status diubah', 'ok');
+  await loadConvs();
+  selectConv(selectedId);
+}
+
+function subAdmin() {
+  cleanupCh();
+  const ch = sb.channel('admin_all')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'conversations' }, () => {
+      loadConvs(); loadStats();
+    })
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+      const m = payload.new;
+      if (m.sender_role === 'visitor') {
+        playSound();
+        toast('Pesan baru masuk', 'info');
+        if (m.conversation_id === selectedId) {
+          $('adminMsgs').appendChild(makeMsg(m));
+          scrollBottom($('adminMsgs'));
+        }
+        loadConvs();
+      } else if (m.conversation_id === selectedId) {
+        $('adminMsgs').appendChild(makeMsg(m));
+        scrollBottom($('adminMsgs'));
+      }
+    })
+    .subscribe();
+  channels.push(ch);
+}
+
+// Quick replies
+async function loadQRs() {
+  try {
+    const { data } = await sb.from('quick_replies').select('*').eq('is_active', true).order('sort_order');
+    qrs = data || [];
+    renderQRBar();
+    renderQRList();
+  } catch (e) {}
+}
+function renderQRBar() {
+  $('qrBar').innerHTML = qrs.map(q =>
+    `<button class="qr-chip" type="button" data-c="${esc(q.content)}">${esc(q.title)}</button>`
+  ).join('');
+  $('qrBar').querySelectorAll('.qr-chip').forEach(b => {
+    b.addEventListener('click', () => {
+      $('aInput').value = b.dataset.c;
+      $('btnASend').disabled = false;
+      $('aInput').focus();
+    });
+  });
+}
+function renderQRList() {
+  $('qrList').innerHTML = qrs.map(q =>
+    `<div class="qr-item"><div><div class="t">${esc(q.title)}</div><div class="c">${esc(q.content)}</div></div>
+     <button class="del" type="button" data-id="${q.id}">Hapus</button></div>`
+  ).join('') || '<div class="empty">Belum ada quick reply</div>';
+  $('qrList').querySelectorAll('.del').forEach(b => {
+    b.addEventListener('click', async () => {
+      if (!confirm('Hapus?')) return;
+      await sb.from('quick_replies').delete().eq('id', b.dataset.id);
+      loadQRs();
+    });
+  });
+}
+async function addQR() {
+  const title = prompt('Judul:');
+  if (!title) return;
+  const content = prompt('Isi pesan:');
+  if (!content) return;
+  await sb.from('quick_replies').insert({ title, content, created_by: user.id, sort_order: qrs.length+1 });
+  loadQRs();
+  toast('Ditambahkan', 'ok');
+}
+
+// Settings
+function fillSettings() {
+  $('setBrand').value = settings.brand_name || '';
+  $('setWelcome').value = settings.welcome_message || '';
+  $('setOffline').value = settings.offline_message || '';
+  $('setHours').value = settings.business_hours || '';
+  $('setEnable').classList.toggle('on', !!settings.enable_livechat);
+  $('setReqEmail').classList.toggle('on', !!settings.require_email);
+}
+async function saveSettings() {
+  const payload = {
+    brand_name: $('setBrand').value.trim(),
+    welcome_message: $('setWelcome').value.trim(),
+    offline_message: $('setOffline').value.trim(),
+    business_hours: $('setHours').value.trim(),
+    enable_livechat: $('setEnable').classList.contains('on'),
+    require_email: $('setReqEmail').classList.contains('on'),
+    updated_at: new Date().toISOString()
+  };
+  const { error } = await sb.from('chat_settings').update(payload).eq('id', 1);
+  if (error) { toast('Gagal: ' + error.message, 'err'); return; }
+  settings = { ...settings, ...payload };
+  $('brandTitle').textContent = settings.brand_name;
+  toast('Tersimpan', 'ok');
+}
+
+// Views
+function showAdminView(p) {
+  $('viewOverview').style.display = 'none';
+  $('viewInbox').classList.remove('show');
+  $('viewChat').classList.remove('show');
+  $('viewQR').classList.remove('show');
+  $('viewSettings').classList.remove('show');
+
+  const titles = { overview:'Overview', inbox:'Percakapan', active:'Aktif', closed:'Selesai', qr:'Quick Replies', settings:'Settings' };
+  $('pageTitle').textContent = titles[p] || p;
+
+  if (p === 'overview') {
+    $('viewOverview').style.display = 'grid';
+    loadStats();
+  } else if (['inbox','active','closed'].includes(p)) {
+    $('viewInbox').classList.add('show');
+    $('viewChat').classList.add('show');
+    filter = p === 'active' ? 'open' : (p === 'closed' ? 'closed' : 'all');
+    document.querySelectorAll('.ftab').forEach(t => t.classList.toggle('active', t.dataset.f === filter));
+    renderConvs();
+  } else if (p === 'qr') {
+    $('viewQR').classList.add('show');
+    loadQRs();
+  } else if (p === 'settings') {
+    $('viewSettings').classList.add('show');
+    fillSettings();
+  }
+}
+
+function cleanupCh() {
+  channels.forEach(c => { try { sb.removeChannel(c); } catch(e){} });
+  channels = [];
+}
+
+function playSound() {
+  try {
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = 800; g.gain.value = 0.08;
+    o.start(); g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime+0.25);
+    o.stop(ctx.currentTime+0.25);
+  } catch(e){}
+}
+
+// ---------- Events ----------
+function bindEvents() {
+  // Launcher
+  $('launcher').addEventListener('click', () => {
+    if ($('chatWin').classList.contains('open')) closeChat();
+    else openChat();
+  });
+  $('btnCloseChat').addEventListener('click', closeChat);
+  $('btnStart').addEventListener('click', startChat);
+  $('btnSend').addEventListener('click', sendMsg);
+  $('btnEndChat').addEventListener('click', endChat);
+  $('btnRate').addEventListener('click', submitRating);
+
+  $('msgInput').addEventListener('input', () => {
+    $('btnSend').disabled = !$('msgInput').value.trim();
+  });
+  $('msgInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMsg(); }
+  });
+
+  document.querySelectorAll('#stars .star').forEach(s => {
+    s.addEventListener('click', () => {
+      rating = parseInt(s.dataset.v);
+      document.querySelectorAll('#stars .star').forEach(x => {
+        x.classList.toggle('on', parseInt(x.dataset.v) <= rating);
+      });
+    });
+  });
+
+  // Admin
+  $('btnGoAdmin').addEventListener('click', () => showPage('pageLogin'));
+  $('btnBackSite').addEventListener('click', e => { e.preventDefault(); showPage('pageLanding'); });
+  $('btnLogin').addEventListener('click', doLogin);
+  $('loginPass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  $('btnLogout').addEventListener('click', doLogout);
+
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      document.querySelectorAll('.nav-btn').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      showAdminView(b.dataset.p);
+      $('sidebar').classList.remove('open');
+      $('sideOverlay').classList.remove('show');
+    });
+  });
+
+  document.querySelectorAll('.ftab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.ftab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      filter = t.dataset.f;
+      renderConvs();
+    });
+  });
+  $('searchBox').addEventListener('input', e => { search = e.target.value; renderConvs(); });
+
+  $('btnASend').addEventListener('click', sendAdminMsg);
+  $('aInput').addEventListener('input', () => { $('btnASend').disabled = !$('aInput').value.trim(); });
+  $('aInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAdminMsg(); }
+  });
+  $('btnCloseConv').addEventListener('click', () => setStatus('closed'));
+  $('btnReopen').addEventListener('click', () => setStatus('open'));
+  $('btnPending').addEventListener('click', () => setStatus('pending'));
+  $('btnAddQR').addEventListener('click', addQR);
+  $('btnSaveSet').addEventListener('click', saveSettings);
+  $('setEnable').addEventListener('click', function(){ this.classList.toggle('on'); });
+  $('setReqEmail').addEventListener('click', function(){ this.classList.toggle('on'); });
+
+  $('btnMenu').addEventListener('click', () => {
+    $('sidebar').classList.add('open');
+    $('sideOverlay').classList.add('show');
+  });
+  $('sideOverlay').addEventListener('click', () => {
+    $('sidebar').classList.remove('open');
+    $('sideOverlay').classList.remove('show');
+  });
+  $('btnBackConv').addEventListener('click', () => {
+    $('viewChat').classList.remove('mobile-open');
+  });
+
+  window.addEventListener('hashchange', () => {
+    if (location.hash === '#admin') showPage('pageLogin');
+  });
+}
+
+// Heartbeat
+setInterval(() => {
+  if (isAdmin && user) {
+    sb.from('profiles').update({ is_online: true, last_seen_at: new Date().toISOString() }).eq('id', user.id);
+  }
+}, 60000);
+</script>
+</body>
+</html>
